@@ -46,6 +46,7 @@ __FBSDID("$FreeBSD: src/usr.bin/bsdiff/bspatch/bspatch.c,v 1.1 2005/08/06 01:59:
 	typedef char JOIN(message, JOIN(_, __LINE__)) [(expr) ? 1 : -1]
 
 COMPILE_ASSERT(sizeof(int64_t) == 8, int64_t_64_bit);
+COMPILE_ASSERT(sizeof(off_t) == 8, off_t_64_bit);
 
 #define MIN(a, b) \
 	((a) < (b) ? (a) : (b))
@@ -81,7 +82,7 @@ COMPILE_ASSERT(sizeof(intmax_t) == 8, intmax_t_not_64_bit);
 // str is assumed to point to an optional negative sign followed by numbers,
 // optionally followed by non-numeric characters, followed by '\0'.
 int IsValidInt64(const char* str) {
-	const char* end_ptr;
+	const char* end_ptr = 0;
 	errno = 0;
 	intmax_t result = strtoimax(str, &end_ptr, /* base: */ 10);
 	return errno == 0;
@@ -150,6 +151,8 @@ int PositionsStringIsValid(const char* positions) {
 	}
 }
 
+static const int64_t kMaxLength = sizeof(size_t) > 4 ? INT64_MAX : SIZE_MAX;
+
 // Reads into a buffer a series of byte ranges from filename.
 // Each range is a pair of comma-separated ints from positions.
 // -1 as an offset means a sparse-hole.
@@ -217,7 +220,10 @@ static char* PositionedRead(const char* filename,
 			errx(1, "length can't be negative "
 			     "(should never happen)\n");
 		}
-		ssize_t rc = pread(fd, buf_tail, read_length, offset);
+		if (read_length > kMaxLength) {
+			errx(1, "read length too large\n");
+		}
+		ssize_t rc = pread(fd, buf_tail, (size_t)read_length, (off_t)offset);
 		if (rc != read_length) {
 			errx(1, "read failed\n");
 		}
@@ -251,11 +257,14 @@ static void PositionedWrite(const char* filename,
 		if (length < 0) {
 			errx(1, "length can't be negative for write\n");
 		}
+		if (length > kMaxLength) {
+			errx(1, "write length too large\n");
+		}
 
 		if (offset < 0) {
 			// Sparse hole. Skip.
 		} else {
-			ssize_t rc = pwrite(fd, buf, length, offset);
+			ssize_t rc = pwrite(fd, buf, (size_t)length, (off_t)offset);
 			if (rc != length) {
 				errx(1, "write failed\n");
 			}
