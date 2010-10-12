@@ -51,6 +51,8 @@ COMPILE_ASSERT(sizeof(off_t) == 8, off_t_64_bit);
 #define MIN(a, b) \
 	((a) < (b) ? (a) : (b))
 
+static const char kFdFilePrefix[] = "/dev/fd/";
+
 // Reads next int from *ints. The int should be terminated with a comma
 // or NULL char. *ints will be updated to the space right after the comma
 // or set to NULL if this was the last number. This assumes the input is
@@ -82,7 +84,7 @@ COMPILE_ASSERT(sizeof(intmax_t) == 8, intmax_t_not_64_bit);
 // str is assumed to point to an optional negative sign followed by numbers,
 // optionally followed by non-numeric characters, followed by '\0'.
 int IsValidInt64(const char* str) {
-	const char* end_ptr = 0;
+	char* end_ptr = 0;
 	errno = 0;
 	intmax_t result = strtoimax(str, &end_ptr, /* base: */ 10);
 	return errno == 0;
@@ -197,7 +199,15 @@ static char* PositionedRead(const char* filename,
 	}
 	char* buf_tail = buf;
 
-	int fd = open(filename, O_RDONLY);
+	int fd = -1;
+	int should_close = 1;
+	if (strlen(filename) > strlen(kFdFilePrefix) &&
+		!strncmp(filename, kFdFilePrefix, strlen(kFdFilePrefix))) {
+		sscanf(filename + strlen(kFdFilePrefix), "%d", &fd);
+		should_close = 0;
+	} else {
+		fd = open(filename, O_RDONLY);
+	}
 	if (fd < 0) {
 		errx(1, "open failed for read\n");
 	}
@@ -229,7 +239,8 @@ static char* PositionedRead(const char* filename,
 		}
 		buf_tail += rc;
 	}
-	close(fd);
+	if (should_close)
+		close(fd);
 	*old_size = length;
 	return buf;
 }
@@ -241,7 +252,15 @@ static void PositionedWrite(const char* filename,
 	if (!PositionsStringIsValid(positions)) {
 		errx(1, "invalid positions string for write\n");
 	}
-	int fd = open(filename, O_WRONLY | O_CREAT, 0666);
+	int fd = -1;
+	int should_close = 1;
+	if (strlen(filename) > strlen(kFdFilePrefix) &&
+		!strncmp(filename, kFdFilePrefix, strlen(kFdFilePrefix))) {
+		sscanf(filename + strlen(kFdFilePrefix), "%d", &fd);
+		should_close = 0;
+	} else {
+		fd = open(filename, O_WRONLY | O_CREAT, 0666);
+	}
 	if (fd < 0) {
 		errx(1, "open failed for write\n");
 	}
@@ -275,7 +294,8 @@ static void PositionedWrite(const char* filename,
 	if (new_size != 0) {
 		errx(1, "output position length doesn't match new size\n");
 	}
-	close(fd);
+	if (should_close)
+		close(fd);
 }
 
 static off_t offtin(u_char *buf)
