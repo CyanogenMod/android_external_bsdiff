@@ -152,6 +152,11 @@ int main(int argc,char * argv[])
 			ctrl[i]=offtin(buf);
 		};
 
+		// android local change (start)
+		if (ctrl[0]<0||ctrl[1]<0)
+			errx(1,"Corrupt patch\n");
+		// android local change (end)
+
 		/* Sanity-check */
 		if(newpos+ctrl[0]>newsize)
 			errx(1,"Corrupt patch\n");
