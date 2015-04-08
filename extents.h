@@ -1,5 +1,9 @@
-#ifndef __EXTENTS_H
-#define __EXTENTS_H
+// Copyright 2015 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef _BSDIFF_EXTENTS_H_
+#define _BSDIFF_EXTENTS_H_
 
 #include "exfile.h"
 
@@ -19,4 +23,4 @@
  * deallocated with free(3). */
 ex_t *extents_parse(const char *ex_str, ex_t *ex_arr, size_t *ex_count_p);
 
-#endif /* __EXTENTS_H */
+#endif  /* _BSDIFF_EXTENTS_H_ */

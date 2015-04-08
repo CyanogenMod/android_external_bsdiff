@@ -76,12 +76,10 @@ static ex_t *parse_extent_str(const char *ex_str, size_t *ex_count_p)
 	return ex_arr;
 }
 
-#define USAGE_TEMPLATE_STR \
-    "usage: %s oldfile newfile patchfile [old-extents new-extents]\n" \
-    "with extents taking the form \"off_1:len_1,...,off_n:len_n\"\n"
-
-int main(int argc,char * argv[])
-{
+int bspatch(
+    const char* old_filename, const char* new_filename,
+    const char* patch_filename,
+    const char* old_extents, const char* new_extents) {
 	FILE * f, * cpf, * dpf, * epf;
 	BZFILE * cpfbz2, * dpfbz2, * epfbz2;
 	int cbz2err, dbz2err, ebz2err;
@@ -95,19 +93,18 @@ int main(int argc,char * argv[])
 	off_t lenread;
 	off_t i, j;
 
-	if ((argc != 6) && (argc != 4)) errx(1, USAGE_TEMPLATE_STR, argv[0]);
-	int using_extents = (argc == 6);
+	int using_extents = (old_extents != NULL || new_extents != NULL);
 
 	/* Open patch file */
-	if ((f = fopen(argv[3], "r")) == NULL)
-		err(1, "fopen(%s)", argv[3]);
+	if ((f = fopen(patch_filename, "r")) == NULL)
+		err(1, "fopen(%s)", patch_filename);
 
 	/*
 	File format:
 		0	8	"BSDIFF40"
 		8	8	X
 		16	8	Y
-		24	8	sizeof(newfile)
+		24	8	sizeof(new_filename)
 		32	X	bzip2(control block)
 		32+X	Y	bzip2(diff block)
 		32+X+Y	???	bzip2(extra block)
@@ -120,7 +117,7 @@ int main(int argc,char * argv[])
 	if (fread(header, 1, 32, f) < 32) {
 		if (feof(f))
 			errx(1, "Corrupt patch\n");
-		err(1, "fread(%s)", argv[3]);
+		err(1, "fread(%s)", patch_filename);
 	}
 
 	/* Check for appropriate magic */
@@ -136,25 +133,25 @@ int main(int argc,char * argv[])
 
 	/* Close patch file and re-open it via libbzip2 at the right places */
 	if (fclose(f))
-		err(1, "fclose(%s)", argv[3]);
-	if ((cpf = fopen(argv[3], "r")) == NULL)
-		err(1, "fopen(%s)", argv[3]);
+		err(1, "fclose(%s)", patch_filename);
+	if ((cpf = fopen(patch_filename, "r")) == NULL)
+		err(1, "fopen(%s)", patch_filename);
 	if (fseeko(cpf, 32, SEEK_SET))
-		err(1, "fseeko(%s, %lld)", argv[3],
+		err(1, "fseeko(%s, %lld)", patch_filename,
 		    (long long)32);
 	if ((cpfbz2 = BZ2_bzReadOpen(&cbz2err, cpf, 0, 0, NULL, 0)) == NULL)
 		errx(1, "BZ2_bzReadOpen, bz2err = %d", cbz2err);
-	if ((dpf = fopen(argv[3], "r")) == NULL)
-		err(1, "fopen(%s)", argv[3]);
+	if ((dpf = fopen(patch_filename, "r")) == NULL)
+		err(1, "fopen(%s)", patch_filename);
 	if (fseeko(dpf, 32 + bzctrllen, SEEK_SET))
-		err(1, "fseeko(%s, %lld)", argv[3],
+		err(1, "fseeko(%s, %lld)", patch_filename,
 		    (long long)(32 + bzctrllen));
 	if ((dpfbz2 = BZ2_bzReadOpen(&dbz2err, dpf, 0, 0, NULL, 0)) == NULL)
 		errx(1, "BZ2_bzReadOpen, bz2err = %d", dbz2err);
-	if ((epf = fopen(argv[3], "r")) == NULL)
-		err(1, "fopen(%s)", argv[3]);
+	if ((epf = fopen(patch_filename, "r")) == NULL)
+		err(1, "fopen(%s)", patch_filename);
 	if (fseeko(epf, 32 + bzctrllen + bzdatalen, SEEK_SET))
-		err(1, "fseeko(%s, %lld)", argv[3],
+		err(1, "fseeko(%s, %lld)", patch_filename,
 		    (long long)(32 + bzctrllen + bzdatalen));
 	if ((epfbz2 = BZ2_bzReadOpen(&ebz2err, epf, 0, 0, NULL, 0)) == NULL)
 		errx(1, "BZ2_bzReadOpen, bz2err = %d", ebz2err);
@@ -162,16 +159,17 @@ int main(int argc,char * argv[])
 	/* Open input file for reading. */
 	if (using_extents) {
 		size_t ex_count = 0;
-		ex_t *ex_arr = parse_extent_str(argv[4], &ex_count);
-		old_file = exfile_fopen(argv[1], "r", ex_arr, ex_count, free);
+		ex_t *ex_arr = parse_extent_str(old_extents, &ex_count);
+		old_file = exfile_fopen(new_filename, "r", ex_arr, ex_count,
+		                        free);
 	} else {
-		old_file = fopen(argv[1], "r");
+		old_file = fopen(new_filename, "r");
 	}
 	if (!old_file ||
 	    fseek(old_file, 0, SEEK_END) != 0 ||
 	    (oldsize = ftell(old_file)) < 0 ||
 	    fseek(old_file, 0, SEEK_SET) != 0)
-		err(1, "cannot obtain the size of %s", argv[1]);
+		err(1, "cannot obtain the size of %s", new_filename);
 	off_t old_file_pos = 0;
 
 	if((new=malloc(newsize+1))==NULL) err(1,NULL);
@@ -249,20 +247,21 @@ int main(int argc,char * argv[])
 	BZ2_bzReadClose(&dbz2err, dpfbz2);
 	BZ2_bzReadClose(&ebz2err, epfbz2);
 	if (fclose(cpf) || fclose(dpf) || fclose(epf))
-		err(1, "fclose(%s)", argv[3]);
+		err(1, "fclose(%s)", patch_filename);
 
 	/* Write the new file */
 	if (using_extents) {
 		size_t ex_count = 0;
-		ex_t *ex_arr = parse_extent_str(argv[5], &ex_count);
-		new_file = exfile_fopen(argv[2], "w", ex_arr, ex_count, free);
+		ex_t *ex_arr = parse_extent_str(new_extents, &ex_count);
+		new_file = exfile_fopen(new_filename, "w", ex_arr, ex_count,
+		                        free);
 	} else {
-		new_file = fopen(argv[2], "w");
+		new_file = fopen(new_filename, "w");
 	}
 	if (!new_file ||
 	    fwrite_unlocked(new, 1, newsize, new_file) != newsize ||
 	    fclose(new_file) == EOF)
-		err(1,"%s",argv[2]);
+		err(1,"%s",new_filename);
 
 	free(new);
 

@@ -1,10 +1,14 @@
+// Copyright 2015 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "extents.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
-
-#include "extents.h"
 
 
 #define TRUE 1

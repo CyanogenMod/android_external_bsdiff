@@ -1,5 +1,9 @@
-#ifndef __EXFILE_H
-#define __EXFILE_H
+// Copyright 2015 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef _BSDIFF_EXFILE_H_
+#define _BSDIFF_EXFILE_H_
 
 #include <stdio.h>
 
@@ -46,4 +50,4 @@ FILE *exfile_fopen(const char *path, const char *fopen_mode, ex_t *ex_arr,
 FILE *exfile_fdopen(int fd, const char *fopen_mode, ex_t *ex_arr,
                     size_t ex_count, void (*ex_free)(void *));
 
-#endif /* __EXFILE_H */
+#endif  /* _BSDIFF_EXFILE_H_ */
