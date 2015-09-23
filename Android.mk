@@ -13,18 +13,30 @@
 # limitations under the License.
 
 LOCAL_PATH := $(call my-dir)
-include $(CLEAR_VARS)
 
-LOCAL_SRC_FILES := bsdiff.c
+bsdiff_common_cflags = -Wall -Werror -Wextra -Wno-unused-parameter
+
+include $(CLEAR_VARS)
 LOCAL_MODULE := bsdiff
+LOCAL_SRC_FILES := \
+    bsdiff.c \
+    bsdiff_main.c
+LOCAL_CFLAGS := $(bsdiff_common_cflags)
 LOCAL_C_INCLUDES += external/bzip2
 LOCAL_STATIC_LIBRARIES := libbz
+LOCAL_SHARED_LIBRARIES := \
+    libdivsufsort64 \
+    libdivsufsort
 include $(BUILD_HOST_EXECUTABLE)
 
 include $(CLEAR_VARS)
-
-LOCAL_SRC_FILES := bspatch.c
 LOCAL_MODULE := bspatch
+LOCAL_SRC_FILES := \
+    bspatch.c \
+    bspatch_main.c \
+    exfile.c \
+    extents.c
+LOCAL_CFLAGS := $(bsdiff_common_cflags)
 LOCAL_C_INCLUDES += external/bzip2
 LOCAL_STATIC_LIBRARIES := libbz
 include $(BUILD_HOST_EXECUTABLE)

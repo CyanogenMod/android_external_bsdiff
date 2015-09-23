@@ -111,7 +111,7 @@ ex_arr_search(size_t ex_count, const ex_t *ex_arr,
 	      size_t init_ex_idx)
 {
     assert(ex_arr && ex_count);
-    const size_t last_ex_idx = ex_count - 1;
+    const ssize_t last_ex_idx = ex_count - 1;
     assert(init_ex_idx <= ex_count);
     assert(pos < prefix_len_arr[last_ex_idx].total);
     if (init_ex_idx == ex_count)
@@ -278,7 +278,7 @@ exfile_seek(void *cookie, off64_t *pos_p, int whence)
     /* Ensure that the target position is valid.  Note that repositioning the
      * file right past the last extent is considered valid, in line with normal
      * seek behavior, although no write (nor read) can be performed there. */
-    if (new_pos < 0 || new_pos > xf->total_ex_len)
+    if (new_pos < 0 || new_pos > (off64_t)xf->total_ex_len)
 	return -1;
 
     if (new_pos != (off64_t)xf->curr_pos) {
@@ -338,7 +338,7 @@ exfile_open(int fd, const char *path, const char *fopen_mode, ex_t *ex_arr,
 
     /* Validate mode argument. */
     exfile_mode_t mode = EXFILE_MODE_MAX;
-    int i;
+    size_t i;
     for (i = 0; i < arraysize(fopen_mode_to_mode); i++)
 	if (!strcmp(fopen_mode_to_mode[i].fopen_mode, fopen_mode)) {
 	    mode = fopen_mode_to_mode[i].mode;
