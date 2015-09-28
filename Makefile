@@ -1,4 +1,10 @@
-BINARIES = bsdiff bspatch
+# Default options
+USE_BSDIFF ?= y
+
+BINARIES-y = bspatch
+BINARIES-$(USE_BSDIFF) += bsdiff
+
+BINARIES += $(BINARIES-y)
 
 INSTALL = install
 CFLAGS += -O3 -Wall -Werror
