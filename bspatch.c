@@ -160,16 +160,16 @@ int bspatch(
 	if (using_extents) {
 		size_t ex_count = 0;
 		ex_t *ex_arr = parse_extent_str(old_extents, &ex_count);
-		old_file = exfile_fopen(new_filename, "r", ex_arr, ex_count,
+		old_file = exfile_fopen(old_filename, "r", ex_arr, ex_count,
 		                        free);
 	} else {
-		old_file = fopen(new_filename, "r");
+		old_file = fopen(old_filename, "r");
 	}
 	if (!old_file ||
 	    fseek(old_file, 0, SEEK_END) != 0 ||
 	    (oldsize = ftell(old_file)) < 0 ||
 	    fseek(old_file, 0, SEEK_SET) != 0)
-		err(1, "cannot obtain the size of %s", new_filename);
+		err(1, "cannot obtain the size of %s", old_filename);
 	off_t old_file_pos = 0;
 
 	if((new=malloc(newsize+1))==NULL) err(1,NULL);
