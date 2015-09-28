@@ -259,7 +259,7 @@ int bspatch(
 		new_file = fopen(new_filename, "w");
 	}
 	if (!new_file ||
-	    fwrite_unlocked(new, 1, newsize, new_file) != newsize ||
+	    fwrite_unlocked(new, 1, newsize, new_file) != (size_t)newsize ||
 	    fclose(new_file) == EOF)
 		err(1,"%s",new_filename);
 
