@@ -14,7 +14,12 @@
 
 LOCAL_PATH := $(call my-dir)
 
-bsdiff_common_cflags = -Wall -Werror -Wextra -Wno-unused-parameter
+bsdiff_common_cflags := \
+    -D_FILE_OFFSET_BITS=64 \
+    -Wall \
+    -Werror \
+    -Wextra \
+    -Wno-unused-parameter
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := bsdiff
@@ -34,7 +39,6 @@ LOCAL_MODULE := bspatch
 LOCAL_SRC_FILES := \
     bspatch.c \
     bspatch_main.c \
-    exfile.c \
     extents.c
 LOCAL_CFLAGS := $(bsdiff_common_cflags)
 LOCAL_C_INCLUDES += external/bzip2
