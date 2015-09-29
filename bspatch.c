@@ -38,7 +38,6 @@ __FBSDID("$FreeBSD: src/usr.bin/bsdiff/bspatch/bspatch.c,v 1.1 2005/08/06 01:59:
 #include <unistd.h>
 #include <sys/types.h>    // android
 
-#include "exfile.h"
 #include "extents.h"
 
 
@@ -60,6 +59,9 @@ static off_t offtin(u_char *buf)
 	return y;
 }
 
+/* TODO(deymo): Re-enable exfile.h once we can build it for the
+target and mac. */
+#if 0
 /* Parses an extent string ex_str, returning a pointer to a newly allocated
  * array of extents. The number of extents is stored in ex_count_p (if
  * provided). */
@@ -75,6 +77,7 @@ static ex_t *parse_extent_str(const char *ex_str, size_t *ex_count_p)
 		*ex_count_p = ex_count;
 	return ex_arr;
 }
+#endif
 
 int bspatch(
     const char* old_filename, const char* new_filename,
@@ -136,21 +139,21 @@ int bspatch(
 		err(1, "fclose(%s)", patch_filename);
 	if ((cpf = fopen(patch_filename, "r")) == NULL)
 		err(1, "fopen(%s)", patch_filename);
-	if (fseeko(cpf, 32, SEEK_SET))
+	if (fseek(cpf, 32, SEEK_SET))
 		err(1, "fseeko(%s, %lld)", patch_filename,
 		    (long long)32);
 	if ((cpfbz2 = BZ2_bzReadOpen(&cbz2err, cpf, 0, 0, NULL, 0)) == NULL)
 		errx(1, "BZ2_bzReadOpen, bz2err = %d", cbz2err);
 	if ((dpf = fopen(patch_filename, "r")) == NULL)
 		err(1, "fopen(%s)", patch_filename);
-	if (fseeko(dpf, 32 + bzctrllen, SEEK_SET))
+	if (fseek(dpf, 32 + bzctrllen, SEEK_SET))
 		err(1, "fseeko(%s, %lld)", patch_filename,
 		    (long long)(32 + bzctrllen));
 	if ((dpfbz2 = BZ2_bzReadOpen(&dbz2err, dpf, 0, 0, NULL, 0)) == NULL)
 		errx(1, "BZ2_bzReadOpen, bz2err = %d", dbz2err);
 	if ((epf = fopen(patch_filename, "r")) == NULL)
 		err(1, "fopen(%s)", patch_filename);
-	if (fseeko(epf, 32 + bzctrllen + bzdatalen, SEEK_SET))
+	if (fseek(epf, 32 + bzctrllen + bzdatalen, SEEK_SET))
 		err(1, "fseeko(%s, %lld)", patch_filename,
 		    (long long)(32 + bzctrllen + bzdatalen));
 	if ((epfbz2 = BZ2_bzReadOpen(&ebz2err, epf, 0, 0, NULL, 0)) == NULL)
@@ -158,10 +161,15 @@ int bspatch(
 
 	/* Open input file for reading. */
 	if (using_extents) {
+		/* TODO(deymo): Re-enable exfile.h once we can build it for the
+		target and mac. */
+		errx(1, "Extent support is disabled.\n");
+#if 0
 		size_t ex_count = 0;
 		ex_t *ex_arr = parse_extent_str(old_extents, &ex_count);
 		old_file = exfile_fopen(old_filename, "r", ex_arr, ex_count,
 		                        free);
+#endif
 	} else {
 		old_file = fopen(old_filename, "r");
 	}
@@ -215,7 +223,7 @@ int bspatch(
 			old_file_pos = oldsize;
 		while (i++ < old_file_pos) {
 			u_char c;
-			if (fread_unlocked(&c, 1, 1, old_file) != 1)
+			if (fread(&c, 1, 1, old_file) != 1)
 				err(1, "error reading from input file");
 			new[j++] += c;
 		}
@@ -251,15 +259,19 @@ int bspatch(
 
 	/* Write the new file */
 	if (using_extents) {
+		/* TODO(deymo): Re-enable exfile.h once we can build it for the
+		target and mac. */
+#if 0
 		size_t ex_count = 0;
 		ex_t *ex_arr = parse_extent_str(new_extents, &ex_count);
 		new_file = exfile_fopen(new_filename, "w", ex_arr, ex_count,
 		                        free);
+#endif
 	} else {
 		new_file = fopen(new_filename, "w");
 	}
 	if (!new_file ||
-	    fwrite_unlocked(new, 1, newsize, new_file) != (size_t)newsize ||
+	    fwrite(new, 1, newsize, new_file) != (size_t)newsize ||
 	    fclose(new_file) == EOF)
 		err(1,"%s",new_filename);
 
