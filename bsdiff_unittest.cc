@@ -14,6 +14,8 @@ using std::string;
 using std::vector;
 using test_utils::BsdiffPatchFile;
 
+namespace bsdiff {
+
 class BsdiffTest : public testing::Test {
  protected:
   BsdiffTest()
@@ -58,3 +60,5 @@ TEST_F(BsdiffTest, EqualSmallFiles) {
   EXPECT_EQ(14, patch.diff_len);
   EXPECT_EQ(14, patch.extra_len);
 }
+
+}  // namespace bsdiff

@@ -10,15 +10,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <algorithm>
+#include <limits>
 
-#define TRUE 1
-#define FALSE 0
-
-/* Minimum/maximum values for arbitrary integer types. */
-#define UNSIGNED_INT_MAX(t) (~((t)0))
-#define SIGNED_INT_MAX(t) ((t)((uintmax_t)UNSIGNED_INT_MAX(t) >> 1))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define INT_TYPE_MAX(t) MAX(UNSIGNED_INT_MAX(t), SIGNED_INT_MAX(t))
+namespace bsdiff {
 
 /* The maximum accepted value for a given integer type when parsed as a signed
  * long long integer. This is defined to be the smaller of the maximum value
@@ -29,12 +24,12 @@
  * bit of an unsigned 64-bit field (e.g. size_t on some platforms), however
  * still permitting values up to 2^62, which is more than enough for all
  * practical purposes. */
-#define LLONG_MAX_BOUND(s) \
-  ((uintmax_t)(s) < (uintmax_t)LLONG_MAX ? (long long)(s) : LLONG_MAX)
-#define MAX_ALLOWED(t) LLONG_MAX_BOUND(INT_TYPE_MAX(t))
+#define MAX_ALLOWED(t)                                            \
+  (std::min(static_cast<uint64_t>(std::numeric_limits<t>::max()), \
+            static_cast<uint64_t>(std::numeric_limits<long long>::max())))
 
 /* Get the type of a struct field. */
-#define FIELD_TYPE(t, f) typeof(((t*)0)->f)
+#define FIELD_TYPE(t, f) decltype(((t*)0)->f)
 
 
 /* Reads a long long integer from |s| into |*val_p|. Returns a pointer to the
@@ -81,7 +76,7 @@ static ssize_t extents_read(const char* ex_str, ex_t* ex_arr, size_t ex_count) {
     long long raw_off = 0, raw_len = 0;
     if (!((ex_str =
                read_llong(ex_str, &raw_off, -1,
-                          MAX_ALLOWED(FIELD_TYPE(ex_t, off)), ':', FALSE)) &&
+                          MAX_ALLOWED(FIELD_TYPE(ex_t, off)), ':', false)) &&
           (ex_str = read_llong(ex_str, &raw_len, 1,
                                MAX_ALLOWED(FIELD_TYPE(ex_t, len)), ',',
                                i >= last_i))))
@@ -126,3 +121,5 @@ ex_t* extents_parse(const char* ex_str, ex_t* ex_arr, size_t* ex_count_p) {
 
   return ex_arr;
 }
+
+}  // namespace bsdiff

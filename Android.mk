@@ -23,9 +23,10 @@ bsdiff_common_cflags := \
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := bsdiff
+LOCAL_CPP_EXTENSION := .cc
 LOCAL_SRC_FILES := \
-    bsdiff.c \
-    bsdiff_main.c
+    bsdiff.cc \
+    bsdiff_main.cc
 LOCAL_CFLAGS := $(bsdiff_common_cflags)
 LOCAL_C_INCLUDES += external/bzip2
 LOCAL_STATIC_LIBRARIES := libbz
@@ -36,10 +37,11 @@ include $(BUILD_HOST_EXECUTABLE)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := bspatch
+LOCAL_CPP_EXTENSION := .cc
 LOCAL_SRC_FILES := \
-    bspatch.c \
-    bspatch_main.c \
-    extents.c
+    bspatch.cc \
+    bspatch_main.cc \
+    extents.cc
 LOCAL_CFLAGS := $(bsdiff_common_cflags)
 LOCAL_C_INCLUDES += external/bzip2
 LOCAL_STATIC_LIBRARIES := libbz

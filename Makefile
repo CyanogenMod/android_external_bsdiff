@@ -52,13 +52,13 @@ unittests: $(BSPATCH_OBJS) $(BSDIFF_OBJS) $(UNITTEST_OBJS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDLIBS)
 
 # Source file dependencies.
-bsdiff.o: bsdiff.c
-bsdiff_main.o: bsdiff_main.c bsdiff.h
+bsdiff.o: bsdiff.cc
+bsdiff_main.o: bsdiff_main.cc bsdiff.h
 bsdiff_unittest.o: bsdiff_unittest.cc bsdiff.h test_utils.h
-bspatch.o: bspatch.c exfile.h extents.h
-bspatch_main.o: bspatch_main.c bspatch.h
-exfile.o: exfile.c exfile.h
-extents.o: extents.c extents.h exfile.h
+bspatch.o: bspatch.cc exfile.h extents.h
+bspatch_main.o: bspatch_main.cc bspatch.h
+exfile.o: exfile.cc exfile.h
+extents.o: extents.cc extents.h exfile.h
 testrunner.o: testrunner.cc
 test_utils.o: test_utils.cc test_utils.h
 

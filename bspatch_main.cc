@@ -23,5 +23,5 @@ int main(int argc, char* argv[]) {
     new_extents = argv[5];
   }
 
-  return bspatch(argv[1], argv[2], argv[3], old_extents, new_extents);
+  return bsdiff::bspatch(argv[1], argv[2], argv[3], old_extents, new_extents);
 }

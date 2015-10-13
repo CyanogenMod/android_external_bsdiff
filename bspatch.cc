@@ -40,6 +40,7 @@ __FBSDID("$FreeBSD: src/usr.bin/bsdiff/bspatch/bspatch.c,v 1.1 2005/08/06 01:59:
 
 #include "extents.h"
 
+namespace {
 
 static off_t offtin(u_char *buf)
 {
@@ -79,6 +80,10 @@ static ex_t *parse_extent_str(const char *ex_str, size_t *ex_count_p)
 }
 #endif
 
+}  // namespace
+
+namespace bsdiff {
+
 int bspatch(
     const char* old_filename, const char* new_filename,
     const char* patch_filename,
@@ -90,7 +95,7 @@ int bspatch(
 	ssize_t oldsize,newsize;
 	ssize_t bzctrllen,bzdatalen;
 	u_char header[32],buf[8];
-	u_char *new;
+	u_char *new_buf;
 	off_t oldpos,newpos;
 	off_t ctrl[3];
 	off_t lenread;
@@ -180,7 +185,7 @@ int bspatch(
 		err(1, "cannot obtain the size of %s", old_filename);
 	off_t old_file_pos = 0;
 
-	if((new=malloc(newsize+1))==NULL) err(1,NULL);
+	if((new_buf=static_cast<u_char*>(malloc(newsize+1)))==NULL) err(1,NULL);
 
 	oldpos=0;newpos=0;
 	while(newpos<newsize) {
@@ -203,7 +208,7 @@ int bspatch(
 			errx(1,"Corrupt patch\n");
 
 		/* Read diff string */
-		lenread = BZ2_bzRead(&dbz2err, dpfbz2, new + newpos, ctrl[0]);
+		lenread = BZ2_bzRead(&dbz2err, dpfbz2, new_buf + newpos, ctrl[0]);
 		if ((lenread < ctrl[0]) ||
 		    ((dbz2err != BZ_OK) && (dbz2err != BZ_STREAM_END)))
 			errx(1, "Corrupt patch\n");
@@ -225,7 +230,7 @@ int bspatch(
 			u_char c;
 			if (fread(&c, 1, 1, old_file) != 1)
 				err(1, "error reading from input file");
-			new[j++] += c;
+			new_buf[j++] += c;
 		}
 
 		/* Adjust pointers */
@@ -237,7 +242,7 @@ int bspatch(
 			errx(1,"Corrupt patch\n");
 
 		/* Read extra string */
-		lenread = BZ2_bzRead(&ebz2err, epfbz2, new + newpos, ctrl[1]);
+		lenread = BZ2_bzRead(&ebz2err, epfbz2, new_buf + newpos, ctrl[1]);
 		if ((lenread < ctrl[1]) ||
 		    ((ebz2err != BZ_OK) && (ebz2err != BZ_STREAM_END)))
 			errx(1, "Corrupt patch\n");
@@ -271,11 +276,13 @@ int bspatch(
 		new_file = fopen(new_filename, "w");
 	}
 	if (!new_file ||
-	    fwrite(new, 1, newsize, new_file) != (size_t)newsize ||
+	    fwrite(new_buf, 1, newsize, new_file) != (size_t)newsize ||
 	    fclose(new_file) == EOF)
 		err(1,"%s",new_filename);
 
-	free(new);
+	free(new_buf);
 
 	return 0;
 }
+
+}  // namespace bsdiff
