@@ -10,13 +10,14 @@
 extern "C" {
 #endif
 
-int bspatch(
-    const char* old_filename, const char* new_filename,
-    const char* patch_filename,
-    const char* old_extents, const char* new_extents);
+int bspatch(const char* old_filename,
+            const char* new_filename,
+            const char* patch_filename,
+            const char* old_extents,
+            const char* new_extents);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  /* _BSDIFF_BSPATCH_H_ */
+#endif /* _BSDIFF_BSPATCH_H_ */

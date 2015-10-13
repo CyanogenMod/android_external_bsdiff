@@ -27,8 +27,8 @@
 
 /* An extent, defined by an offset and a length. */
 typedef struct {
-    off_t off;   /* the extent offset; negative indicates a sparse extent */
-    size_t len;  /* the extent length */
+  off_t off;  /* the extent offset; negative indicates a sparse extent */
+  size_t len; /* the extent length */
 } ex_t;
 
 
@@ -40,14 +40,20 @@ typedef struct {
  * deallocate the extent array once the file object is closed.  Returns a FILE
  * pointer that can be used with ordinary stream functions (e.g.  fread), or
  * NULL if opening the file has failed.  */
-FILE *exfile_fopen(const char *path, const char *fopen_mode, ex_t *ex_arr,
-                   size_t ex_count, void (*ex_free)(void *));
+FILE* exfile_fopen(const char* path,
+                   const char* fopen_mode,
+                   ex_t* ex_arr,
+                   size_t ex_count,
+                   void (*ex_free)(void*));
 
 /* Associates an extent file stream with an already open file descriptor |fd|.
  * The |fopen_mode| argument is as decribed above and must be compatible with
  * the mode of |fd|. All other arguments, behaviors and return values are as
  * those of exfile_fopen (see above). */
-FILE *exfile_fdopen(int fd, const char *fopen_mode, ex_t *ex_arr,
-                    size_t ex_count, void (*ex_free)(void *));
+FILE* exfile_fdopen(int fd,
+                    const char* fopen_mode,
+                    ex_t* ex_arr,
+                    size_t ex_count,
+                    void (*ex_free)(void*));
 
-#endif  /* _BSDIFF_EXFILE_H_ */
+#endif /* _BSDIFF_EXFILE_H_ */

@@ -21,6 +21,6 @@
  * NULL but still store the number of parsed extents.  Otherwise, returns NULL
  * and does not store anything. If a new array was allocated, then it should be
  * deallocated with free(3). */
-ex_t *extents_parse(const char *ex_str, ex_t *ex_arr, size_t *ex_count_p);
+ex_t* extents_parse(const char* ex_str, ex_t* ex_arr, size_t* ex_count_p);
 
-#endif  /* _BSDIFF_EXTENTS_H_ */
+#endif /* _BSDIFF_EXTENTS_H_ */

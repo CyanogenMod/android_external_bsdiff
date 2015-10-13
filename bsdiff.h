@@ -10,11 +10,12 @@
 extern "C" {
 #endif
 
-int bsdiff(const char* old_filename, const char* new_filename,
+int bsdiff(const char* old_filename,
+           const char* new_filename,
            const char* patch_filename);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  /* _BSDIFF_BSDIFF_H_ */
+#endif /* _BSDIFF_BSDIFF_H_ */
