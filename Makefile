@@ -32,12 +32,14 @@ BSDIFF_OBJS = \
 BSPATCH_LIBS = -lbz2
 BSPATCH_OBJS = \
   bspatch.o \
-  exfile.o \
-  extents.o
+  extents.o \
+  extents_file.o \
+  file.o
 
-UNITTEST_LIBS = -lgtest
+UNITTEST_LIBS = -lgmock -lgtest
 UNITTEST_OBJS = \
   bsdiff_unittest.o \
+  extents_file_unittest.o \
   test_utils.o \
   testrunner.o
 
@@ -49,16 +51,21 @@ bspatch: LDLIBS += $(BSPATCH_LIBS)
 
 unittests: LDLIBS += $(BSDIFF_LIBS) $(BSPATCH_LIBS) $(UNITTEST_LIBS)
 unittests: $(BSPATCH_OBJS) $(BSDIFF_OBJS) $(UNITTEST_OBJS)
+
+unittests bsdiff bspatch:
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDLIBS)
 
 # Source file dependencies.
 bsdiff.o: bsdiff.cc
 bsdiff_main.o: bsdiff_main.cc bsdiff.h
 bsdiff_unittest.o: bsdiff_unittest.cc bsdiff.h test_utils.h
-bspatch.o: bspatch.cc exfile.h extents.h
+bspatch.o: bspatch.cc extents.h extents_file.h file_interface.h
 bspatch_main.o: bspatch_main.cc bspatch.h
-exfile.o: exfile.cc exfile.h
-extents.o: extents.cc extents.h exfile.h
+extents.o: extents.cc extents.h extents_file.h file_interface.h
+extents_file.o: extents_file.cc extents_file.h file_interface.h
+extents_file_unittest.o: extents_file_unittest.cc extents_file.h \
+ file_interface.h
+file.o: file.cc file.h file_interface.h
 testrunner.o: testrunner.cc
 test_utils.o: test_utils.cc test_utils.h
 

@@ -21,6 +21,12 @@ bsdiff_common_cflags := \
     -Wextra \
     -Wno-unused-parameter
 
+bspatch_src_files := \
+    bspatch.cc \
+    extents.cc \
+    extents_file.cc \
+    file.cc
+
 include $(CLEAR_VARS)
 LOCAL_MODULE := bsdiff
 LOCAL_CPP_EXTENSION := .cc
@@ -39,9 +45,8 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := bspatch
 LOCAL_CPP_EXTENSION := .cc
 LOCAL_SRC_FILES := \
-    bspatch.cc \
-    bspatch_main.cc \
-    extents.cc
+    $(bspatch_src_files) \
+    bspatch_main.cc
 LOCAL_CFLAGS := $(bsdiff_common_cflags)
 LOCAL_C_INCLUDES += external/bzip2
 LOCAL_STATIC_LIBRARIES := libbz

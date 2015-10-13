@@ -5,8 +5,9 @@
 #ifndef _BSDIFF_EXTENTS_H_
 #define _BSDIFF_EXTENTS_H_
 
-#include "exfile.h"
+#include "extents_file.h"
 
+namespace bsdiff {
 
 /* Parses a string representation |ex_str| and populates an array |ex_arr|
  * consisting of |*ex_count_p| extents. The string is expected to be a
@@ -22,5 +23,7 @@
  * and does not store anything. If a new array was allocated, then it should be
  * deallocated with free(3). */
 ex_t* extents_parse(const char* ex_str, ex_t* ex_arr, size_t* ex_count_p);
+
+}  // namespace bsdiff
 
 #endif /* _BSDIFF_EXTENTS_H_ */
