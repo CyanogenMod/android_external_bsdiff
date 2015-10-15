@@ -35,6 +35,10 @@ class FileInterface {
   // succeeded.
   virtual bool Close() = 0;
 
+  // Compute the size of the file and store it in |size|. Returns whether it
+  // computed the size successfully.
+  virtual bool GetSize(uint64_t* size) = 0;
+
  protected:
   FileInterface() = default;
 };

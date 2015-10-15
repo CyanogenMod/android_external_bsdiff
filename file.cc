@@ -6,6 +6,9 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#ifdef __linux__
+#include <linux/fs.h>
+#endif  // __linux__
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -86,6 +89,39 @@ bool File::Close() {
     success = true;
   fd_ = -1;
   return success;
+}
+
+bool File::GetSize(uint64_t* size) {
+  struct stat stbuf;
+  if (fstat(fd_, &stbuf) == -1)
+    return false;
+  if (S_ISREG(stbuf.st_mode)) {
+    return stbuf.st_size;
+  }
+  if (S_ISBLK(stbuf.st_mode)) {
+#if defined(BLKGETSIZE64)
+    return ioctl(fd_, BLKGETSIZE64, size);
+#elif defined(DKIOCGETBLOCKCOUNT)
+    uint64_t sectors = 0;
+    if (ioctl(fd_, DKIOCGETBLOCKCOUNT, &sectors) == 0) {
+      *size = sectors << 9;
+      return true;
+    }
+    return false;
+#else
+    // Fall back to doing seeks to know the EOF.
+    off_t pos = lseek(fd_, 0, SEEK_CUR);
+    if (pos == -1)
+      return false;
+    off_t end_pos = lseek(fd_, 0, SEEK_END);
+    if (end_pos == -1)
+      return false;
+    *size = end_pos;
+    lseek(fd_, 0, SEEK_END);
+    return true;
+#endif
+  }
+  return false;
 }
 
 File::File(int fd)

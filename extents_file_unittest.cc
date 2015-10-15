@@ -28,6 +28,7 @@ class MockFile : public FileInterface {
   MOCK_METHOD3(Write, bool(const void*, size_t, size_t*));
   MOCK_METHOD1(Seek, bool(off_t));
   MOCK_METHOD0(Close, bool());
+  MOCK_METHOD1(GetSize, bool(uint64_t*));
 };
 
 ACTION(SucceedIO) {
@@ -65,6 +66,14 @@ TEST_F(ExtentsFileTest, CloseIsForwarded) {
   ExtentsFile file(std::move(mock_file_ptr_), {});
   EXPECT_TRUE(file.Close());
   EXPECT_CALL(*mock_file_, Close()).WillOnce(Return(false));
+}
+
+TEST_F(ExtentsFileTest, GetSizeSumExtents) {
+  ExtentsFile file(std::move(mock_file_ptr_),
+                   {ex_t{10, 5}, ex_t{20, 5}, {25, 2}});
+  uint64_t size;
+  EXPECT_TRUE(file.GetSize(&size));
+  EXPECT_EQ(12U, size);
 }
 
 TEST_F(ExtentsFileTest, SeekToRightOffsets) {

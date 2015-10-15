@@ -53,6 +53,7 @@ class ExtentsFile : public FileInterface {
   bool Write(const void* buf, size_t count, size_t* bytes_written) override;
   bool Seek(off_t pos) override;
   bool Close() override;
+  bool GetSize(uint64_t* size) override;
 
  private:
   void AdvancePos(uint64_t size);

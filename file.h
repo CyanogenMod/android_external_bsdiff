@@ -24,6 +24,7 @@ class File : public FileInterface {
   bool Write(const void* buf, size_t count, size_t* bytes_written) override;
   bool Seek(off_t pos) override;
   bool Close() override;
+  bool GetSize(uint64_t* size) override;
 
  private:
   // Creates the File instance for the |fd|. Takes ownership of the file

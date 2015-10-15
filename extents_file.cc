@@ -62,6 +62,11 @@ bool ExtentsFile::Close() {
   return file_->Close();
 }
 
+bool ExtentsFile::GetSize(uint64_t* size) {
+  *size = total_ex_len_;
+  return true;
+}
+
 void ExtentsFile::AdvancePos(uint64_t size) {
   curr_pos_ += size;
   for (; curr_ex_idx_ < extents_.size(); curr_ex_idx_++) {
