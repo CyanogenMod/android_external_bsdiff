@@ -90,36 +90,24 @@ static ssize_t extents_read(const char* ex_str, ex_t* ex_arr, size_t ex_count) {
 }
 
 
-ex_t* extents_parse(const char* ex_str, ex_t* ex_arr, size_t* ex_count_p) {
-  /* Sanity checks: a string must be provided; if an array is provided, an
-   * array count must be given as well. */
-  if (!ex_str || (ex_arr && !ex_count_p))
-    return NULL;
+bool ParseExtentStr(const char* ex_str, std::vector<ex_t>* extents) {
+  // Sanity check: a string must be provided.
+  if (!ex_str)
+    return false;
 
   /* Parse string and count extents. */
   ssize_t ret = extents_read(ex_str, NULL, 0);
   if (ret < 0)
-    return NULL; /* parsing error */
-  size_t ex_count = (size_t)ret;
+    return false;  // parsing error.
 
-  /* Input is good, commit to extent count. */
-  if (ex_count_p) {
-    size_t alloc_ex_count = *ex_count_p;
-    *ex_count_p = ex_count;
-    if (ex_arr && alloc_ex_count < ex_count)
-      return NULL; /* insufficient allocated space */
-  }
-  if (ex_count == 0)
-    return NULL; /* no extents, nothing to do */
+  // Input is good, commit to extent count.
+  extents->resize(ret);
+  if (ret == 0)
+    return true;  // No extents, nothing to do.
 
-  /* Allocate extent array, if needed. */
-  if (!(ex_arr || (ex_arr = (ex_t*)malloc(sizeof(ex_t) * ex_count))))
-    return NULL; /* allocation failed */
-
-  /* Populate the extent array. */
-  extents_read(ex_str, ex_arr, ex_count);
-
-  return ex_arr;
+  // Populate the extent array.
+  extents_read(ex_str, extents->data(), extents->size());
+  return true;
 }
 
 }  // namespace bsdiff

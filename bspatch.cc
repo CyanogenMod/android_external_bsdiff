@@ -34,18 +34,24 @@ __FBSDID("$FreeBSD: src/usr.bin/bsdiff/bspatch/bspatch.c,v 1.1 2005/08/06 01:59:
 #include <err.h>
 #include <fcntl.h>
 #include <inttypes.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 
+#include <algorithm>
+#include <memory>
+#include <limits>
+
 #include "extents.h"
+#include "extents_file.h"
+#include "file.h"
+#include "file_interface.h"
 
 namespace {
 
-static off_t offtin(u_char *buf) {
-  off_t y;
+int64_t ParseInt64(u_char* buf) {
+  int64_t y;
 
   y = buf[7] & 0x7F;
   y = y * 256;
@@ -69,24 +75,6 @@ static off_t offtin(u_char *buf) {
   return y;
 }
 
-// TODO(deymo): Re-enable exfile.h once we can build it for the
-// target and mac.
-#if 0
-// Parses an extent string ex_str, returning a pointer to a newly allocated
-// array of extents. The number of extents is stored in ex_count_p (if
-// provided).
-static ex_t *parse_extent_str(const char *ex_str, size_t *ex_count_p) {
-  size_t ex_count = (size_t)-1;
-  ex_t* ex_arr = extents_parse(ex_str, NULL, &ex_count);
-  if (!ex_arr)
-    errx(1, (ex_count == (size_t)-1 ? "error parsing extents"
-                                    : "error allocating extent array"));
-  if (ex_count_p)
-    *ex_count_p = ex_count;
-  return ex_arr;
-}
-#endif
-
 }  // namespace
 
 namespace bsdiff {
@@ -98,15 +86,11 @@ int bspatch(
   FILE* f, *cpf, *dpf, *epf;
   BZFILE* cpfbz2, *dpfbz2, *epfbz2;
   int cbz2err, dbz2err, ebz2err;
-  FILE* old_file = NULL, * new_file = NULL;
-  ssize_t oldsize, newsize;
   ssize_t bzctrllen, bzdatalen;
   u_char header[32], buf[8];
   u_char* new_buf;
-  off_t oldpos, newpos;
   off_t ctrl[3];
   off_t lenread;
-  off_t i, j;
 
   int using_extents = (old_extents != NULL || new_extents != NULL);
 
@@ -138,10 +122,12 @@ int bspatch(
     errx(1, "Corrupt patch\n");
 
   // Read lengths from header.
-  bzctrllen = offtin(header + 8);
-  bzdatalen = offtin(header + 16);
-  newsize = offtin(header + 24);
-  if ((bzctrllen < 0) || (bzdatalen < 0) || (newsize < 0))
+  uint64_t oldsize, newsize;
+  bzctrllen = ParseInt64(header + 8);
+  bzdatalen = ParseInt64(header + 16);
+  int64_t signed_newsize = ParseInt64(header + 24);
+  newsize = signed_newsize;
+  if ((bzctrllen < 0) || (bzdatalen < 0) || (signed_newsize < 0))
     errx(1, "Corrupt patch\n");
 
   // Close patch file and re-open it via libbzip2 at the right places.
@@ -168,34 +154,35 @@ int bspatch(
     errx(1, "BZ2_bzReadOpen, bz2err = %d", ebz2err);
 
   // Open input file for reading.
+  std::unique_ptr<FileInterface> old_file = File::FOpen(old_filename, O_RDONLY);
+  if (!old_file)
+    err(1, "Error opening the old filename");
+
   if (using_extents) {
-    // TODO(deymo): Re-enable exfile.h once we can build it for the
-    // target and mac.
-    errx(1, "Extent support is disabled.\n");
-#if 0
-    size_t ex_count = 0;
-    ex_t *ex_arr = parse_extent_str(old_extents, &ex_count);
-    old_file = exfile_fopen(old_filename, "r", ex_arr, ex_count,
-                            free);
-#endif
-  } else { old_file = fopen(old_filename, "r"); }
-  if (!old_file || fseek(old_file, 0, SEEK_END) != 0 ||
-      (oldsize = ftell(old_file)) < 0 || fseek(old_file, 0, SEEK_SET) != 0)
+    std::vector<ex_t> parsed_old_extents;
+    if (!ParseExtentStr(old_extents, &parsed_old_extents))
+      errx(1, "Error parsing the old extents");
+    old_file.reset(new ExtentsFile(std::move(old_file), parsed_old_extents));
+  }
+
+  if (!old_file->GetSize(&oldsize))
     err(1, "cannot obtain the size of %s", old_filename);
-  off_t old_file_pos = 0;
+  uint64_t old_file_pos = 0;
 
   if ((new_buf = static_cast<u_char*>(malloc(newsize + 1))) == NULL)
     err(1, NULL);
 
-  oldpos = 0;
-  newpos = 0;
+  // The oldpos can be negative, but the new pos is only incremented linearly.
+  int64_t oldpos = 0;
+  uint64_t newpos = 0;
   while (newpos < newsize) {
+    int64_t i, j;
     // Read control data.
     for (i = 0; i <= 2; i++) {
       lenread = BZ2_bzRead(&cbz2err, cpfbz2, buf, 8);
       if ((lenread < 8) || ((cbz2err != BZ_OK) && (cbz2err != BZ_STREAM_END)))
         errx(1, "Corrupt patch\n");
-      ctrl[i] = offtin(buf);
+      ctrl[i] = ParseInt64(buf);
     };
 
     // Sanity-check.
@@ -219,15 +206,25 @@ int bspatch(
       j -= i;
       i = 0;
     }
-    if (i != old_file_pos && fseek(old_file, i, SEEK_SET) < 0)
-      err(1, "error seeking input file to offset %" PRIdMAX, (intmax_t)i);
+    // We just checked that |i| is not negative.
+    if (static_cast<uint64_t>(i) != old_file_pos && !old_file->Seek(i))
+      err(1, "error seeking input file to offset %" PRId64, i);
     if ((old_file_pos = oldpos + ctrl[0]) > oldsize)
       old_file_pos = oldsize;
-    while (i++ < old_file_pos) {
-      u_char c;
-      if (fread(&c, 1, 1, old_file) != 1)
+
+    uint64_t chunk_size = old_file_pos - i;
+    while (chunk_size > 0) {
+      size_t read_bytes;
+      size_t bytes_to_read = std::min(
+          chunk_size,
+          static_cast<uint64_t>(std::numeric_limits<size_t>::max()));
+      if (!old_file->Read(new_buf + j, bytes_to_read, &read_bytes)) {
         err(1, "error reading from input file");
-      new_buf[j++] += c;
+      }
+      if (!read_bytes)
+        errx(1, "EOF reached while reading from input file");
+      j += read_bytes;
+      chunk_size -= read_bytes;
     }
 
     // Adjust pointers.
@@ -250,7 +247,7 @@ int bspatch(
   };
 
   // Close input file.
-  fclose(old_file);
+  old_file->Close();
 
   // Clean up the bzip2 reads.
   BZ2_bzReadClose(&cbz2err, cpfbz2);
@@ -260,19 +257,28 @@ int bspatch(
     err(1, "fclose(%s)", patch_filename);
 
   // Write the new file.
+  std::unique_ptr<FileInterface> new_file =
+      File::FOpen(new_filename, O_CREAT | O_WRONLY);
+  if (!new_file)
+    err(1, "Error opening the new filename %s", new_filename);
+
   if (using_extents) {
-// TODO(deymo): Re-enable exfile.h once we can build it for the
-// target and mac.
-#if 0
-    size_t ex_count = 0;
-    ex_t *ex_arr = parse_extent_str(new_extents, &ex_count);
-    new_file = exfile_fopen(new_filename, "w", ex_arr, ex_count,
-                            free);
-#endif
-  } else { new_file = fopen(new_filename, "w"); }
-  if (!new_file || fwrite(new_buf, 1, newsize, new_file) != (size_t)newsize ||
-      fclose(new_file) == EOF)
-    err(1, "%s", new_filename);
+    std::vector<ex_t> parsed_new_extents;
+    if (!ParseExtentStr(new_extents, &parsed_new_extents))
+      errx(1, "Error parsing the new extents");
+    new_file.reset(new ExtentsFile(std::move(new_file), parsed_new_extents));
+  }
+
+  while (newsize > 0) {
+    size_t bytes_written;
+    if (!new_file->Write(new_buf, newsize, &bytes_written))
+      err(1, "Error writing new file %s", new_filename);
+    newsize -= bytes_written;
+    new_buf += bytes_written;
+  }
+
+  if (!new_file->Close())
+    err(1, "Error closing new file %s", new_filename);
 
   free(new_buf);
 
