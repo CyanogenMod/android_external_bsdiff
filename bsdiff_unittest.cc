@@ -42,7 +42,7 @@ TEST_F(BsdiffTest, EqualEmptyFiles) {
 
   // An empty bz2 file will have 14 bytes.
   EXPECT_EQ(14, patch.diff_len);
-  EXPECT_EQ(14, patch.extra_len);
+  EXPECT_EQ(14U, patch.extra_len);
 }
 
 TEST_F(BsdiffTest, EqualSmallFiles) {
@@ -58,7 +58,7 @@ TEST_F(BsdiffTest, EqualSmallFiles) {
 
   // An empty bz2 file will have 14 bytes.
   EXPECT_EQ(14, patch.diff_len);
-  EXPECT_EQ(14, patch.extra_len);
+  EXPECT_EQ(14U, patch.extra_len);
 }
 
 }  // namespace bsdiff
