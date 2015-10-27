@@ -25,13 +25,12 @@ const string PrependTmpdir(const string& path) {
   if (path[0] == '/')
     return path;
 
-  const char *tmpdir = getenv("TMPDIR");
+  const char* tmpdir = getenv("TMPDIR");
   const string prefix = (tmpdir && *tmpdir ? tmpdir : "/tmp");
   return prefix + "/" + path;
 }
 
-bool MakeTempFile(const string& base_filename_template,
-                  string* filename) {
+bool MakeTempFile(const string& base_filename_template, string* filename) {
   const string filename_template = PrependTmpdir(base_filename_template);
   vector<char> result(filename_template.size() + 1, '\0');
   memcpy(result.data(), filename_template.data(), filename_template.size());

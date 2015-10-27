@@ -14,6 +14,7 @@
 
 LOCAL_PATH := $(call my-dir)
 
+# Common project flags.
 bsdiff_common_cflags := \
     -D_FILE_OFFSET_BITS=64 \
     -Wall \
@@ -21,26 +22,67 @@ bsdiff_common_cflags := \
     -Wextra \
     -Wno-unused-parameter
 
-include $(CLEAR_VARS)
-LOCAL_MODULE := bsdiff
-LOCAL_SRC_FILES := \
-    bsdiff.c \
-    bsdiff_main.c
-LOCAL_CFLAGS := $(bsdiff_common_cflags)
-LOCAL_C_INCLUDES += external/bzip2
-LOCAL_STATIC_LIBRARIES := libbz
-LOCAL_SHARED_LIBRARIES := \
+bsdiff_common_static_libs := \
+    libbz
+
+bsdiff_common_unittests := \
+    bsdiff_unittest.cc \
+    extents_file_unittest.cc \
+    extents_unittest.cc \
+    test_utils.cc
+
+# "bsdiff" program.
+bsdiff_shared_libs := \
     libdivsufsort64 \
     libdivsufsort
+
+bsdiff_src_files := \
+    bsdiff.cc
+
+# "bspatch" program.
+bspatch_src_files := \
+    bspatch.cc \
+    extents.cc \
+    extents_file.cc \
+    file.cc
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := bsdiff
+LOCAL_CPP_EXTENSION := .cc
+LOCAL_SRC_FILES := \
+    $(bsdiff_src_files) \
+    bsdiff_main.cc
+LOCAL_CFLAGS := $(bsdiff_common_cflags)
+LOCAL_C_INCLUDES += external/bzip2
+LOCAL_STATIC_LIBRARIES := $(bsdiff_common_static_libs)
+LOCAL_SHARED_LIBRARIES := $(bsdiff_shared_libs)
 include $(BUILD_HOST_EXECUTABLE)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := bspatch
+LOCAL_CPP_EXTENSION := .cc
 LOCAL_SRC_FILES := \
-    bspatch.c \
-    bspatch_main.c \
-    extents.c
+    $(bspatch_src_files) \
+    bspatch_main.cc
 LOCAL_CFLAGS := $(bsdiff_common_cflags)
 LOCAL_C_INCLUDES += external/bzip2
-LOCAL_STATIC_LIBRARIES := libbz
+LOCAL_STATIC_LIBRARIES := $(bsdiff_common_static_libs)
+include $(BUILD_HOST_EXECUTABLE)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := bsdiff_unittest
+LOCAL_MODULE_TAGS := debug tests
+LOCAL_CPP_EXTENSION := .cc
+LOCAL_SRC_FILES := \
+    $(bsdiff_src_files) \
+    $(bspatch_src_files) \
+    $(bsdiff_common_unittests) \
+    testrunner.cc
+LOCAL_CFLAGS := $(bsdiff_common_cflags)
+LOCAL_C_INCLUDES += external/bzip2
+LOCAL_STATIC_LIBRARIES := \
+    $(bsdiff_common_static_libs) \
+    libgtest_host \
+    libgmock_host
+LOCAL_SHARED_LIBRARIES := $(bsdiff_shared_libs)
 include $(BUILD_HOST_EXECUTABLE)
