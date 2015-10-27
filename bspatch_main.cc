@@ -7,11 +7,11 @@
 
 #include "bspatch.h"
 
-#define USAGE_TEMPLATE_STR \
-    "usage: %s oldfile newfile patchfile [old-extents new-extents]\n" \
-    "with extents taking the form \"off_1:len_1,...,off_n:len_n\"\n"
+#define USAGE_TEMPLATE_STR                                          \
+  "usage: %s oldfile newfile patchfile [old-extents new-extents]\n" \
+  "with extents taking the form \"off_1:len_1,...,off_n:len_n\"\n"
 
-int main(int argc, char * argv[]) {
+int main(int argc, char* argv[]) {
   const char* old_extents = NULL;
   const char* new_extents = NULL;
 
@@ -23,5 +23,5 @@ int main(int argc, char * argv[]) {
     new_extents = argv[5];
   }
 
-  return bspatch(argv[1], argv[2], argv[3], old_extents, new_extents);
+  return bsdiff::bspatch(argv[1], argv[2], argv[3], old_extents, new_extents);
 }

@@ -38,6 +38,8 @@ __FBSDID("$FreeBSD: src/usr.bin/bsdiff/bsdiff/bsdiff.c,v 1.1 2005/08/06 01:59:05
 #include <string.h>
 #include <unistd.h>
 
+#include <algorithm>
+
 #if _FILE_OFFSET_BITS == 64
 #include "divsufsort64.h"
 #define saidx_t saidx64_t
@@ -46,26 +48,26 @@ __FBSDID("$FreeBSD: src/usr.bin/bsdiff/bsdiff/bsdiff.c,v 1.1 2005/08/06 01:59:05
 #include "divsufsort.h"
 #endif
 
-#define MIN(x,y) (((x)<(y)) ? (x) : (y))
+namespace bsdiff {
 
-static off_t matchlen(u_char *old,off_t oldsize,u_char *new,off_t newsize)
-{
+static off_t matchlen(u_char *old, off_t oldsize, u_char *new_buf,
+                      off_t newsize) {
 	off_t i;
 
 	for(i=0;(i<oldsize)&&(i<newsize);i++)
-		if(old[i]!=new[i]) break;
+		if(old[i]!=new_buf[i]) break;
 
 	return i;
 }
 
 static off_t search(saidx_t *I,u_char *old,off_t oldsize,
-		u_char *new,off_t newsize,off_t st,off_t en,off_t *pos)
+		u_char *new_buf,off_t newsize,off_t st,off_t en,off_t *pos)
 {
 	off_t x,y;
 
 	if(en-st<2) {
-		x=matchlen(old+I[st],oldsize-I[st],new,newsize);
-		y=matchlen(old+I[en],oldsize-I[en],new,newsize);
+		x=matchlen(old+I[st],oldsize-I[st],new_buf,newsize);
+		y=matchlen(old+I[en],oldsize-I[en],new_buf,newsize);
 
 		if(x>y) {
 			*pos=I[st];
@@ -77,10 +79,10 @@ static off_t search(saidx_t *I,u_char *old,off_t oldsize,
 	};
 
 	x=st+(en-st)/2;
-	if(memcmp(old+I[x],new,MIN(oldsize-I[x],newsize))<=0) {
-		return search(I,old,oldsize,new,newsize,x,en,pos);
+	if(memcmp(old+I[x],new_buf,std::min(oldsize-I[x],newsize))<=0) {
+		return search(I,old,oldsize,new_buf,newsize,x,en,pos);
 	} else {
-		return search(I,old,oldsize,new,newsize,st,x,pos);
+		return search(I,old,oldsize,new_buf,newsize,st,x,pos);
 	};
 }
 
@@ -105,7 +107,7 @@ static void offtout(off_t x,u_char *buf)
 int bsdiff(const char* old_filename, const char* new_filename,
            const char* patch_filename) {
 	int fd;
-	u_char *old,*new;
+	u_char *old_buf,*new_buf;
 	off_t oldsize,newsize;
 	saidx_t *I;
 	off_t scan,pos=0,len;
@@ -126,26 +128,27 @@ int bsdiff(const char* old_filename, const char* new_filename,
 		that we never try to malloc(0) and get a NULL pointer */
 	if(((fd=open(old_filename,O_RDONLY,0))<0) ||
 		((oldsize=lseek(fd,0,SEEK_END))==-1) ||
-		((old=malloc(oldsize+1))==NULL) ||
+		((old_buf=static_cast<u_char*>(malloc(oldsize+1)))==NULL) ||
 		(lseek(fd,0,SEEK_SET)!=0) ||
-		(read(fd,old,oldsize)!=oldsize) ||
+		(read(fd,old_buf,oldsize)!=oldsize) ||
 		(close(fd)==-1)) err(1,"%s",old_filename);
 
-	if(((I=malloc((oldsize+1)*sizeof(saidx_t)))==NULL)) err(1,NULL);
+	if((I=static_cast<saidx_t*>(malloc((oldsize+1)*sizeof(saidx_t))))==NULL)
+		err(1,NULL);
 
-	if(divsufsort(old, I, oldsize)) err(1, "divsufsort");
+	if(divsufsort(old_buf, I, oldsize)) err(1, "divsufsort");
 
 	/* Allocate newsize+1 bytes instead of newsize bytes to ensure
 		that we never try to malloc(0) and get a NULL pointer */
 	if(((fd=open(new_filename,O_RDONLY,0))<0) ||
 		((newsize=lseek(fd,0,SEEK_END))==-1) ||
-		((new=malloc(newsize+1))==NULL) ||
+		((new_buf = static_cast<u_char*>(malloc(newsize+1)))==NULL) ||
 		(lseek(fd,0,SEEK_SET)!=0) ||
-		(read(fd,new,newsize)!=newsize) ||
+		(read(fd,new_buf,newsize)!=newsize) ||
 		(close(fd)==-1)) err(1,"%s",new_filename);
 
-	if(((db=malloc(newsize+1))==NULL) ||
-		((eb=malloc(newsize+1))==NULL)) err(1,NULL);
+	if(((db=static_cast<u_char*>(malloc(newsize+1)))==NULL) ||
+		((eb=static_cast<u_char*>(malloc(newsize+1)))==NULL)) err(1,NULL);
 	dblen=0;
 	eblen=0;
 
@@ -189,19 +192,19 @@ int bsdiff(const char* old_filename, const char* new_filename,
 			prev_oldscore=oldscore;
 			prev_pos=pos;
 
-			len=search(I,old,oldsize,new+scan,newsize-scan,
+			len=search(I,old_buf,oldsize,new_buf+scan,newsize-scan,
 					0,oldsize,&pos);
 
 			for(;scsc<scan+len;scsc++)
 			if((scsc+lastoffset<oldsize) &&
-				(old[scsc+lastoffset] == new[scsc]))
+				(old_buf[scsc+lastoffset] == new_buf[scsc]))
 				oldscore++;
 
 			if(((len==oldscore) && (len!=0)) ||
 				(len>oldscore+8)) break;
 
 			if((scan+lastoffset<oldsize) &&
-				(old[scan+lastoffset] == new[scan]))
+				(old_buf[scan+lastoffset] == new_buf[scan]))
 				oldscore--;
 
 			const off_t fuzz = 8;
@@ -219,7 +222,7 @@ int bsdiff(const char* old_filename, const char* new_filename,
 		if((len!=oldscore) || (scan==newsize)) {
 			s=0;Sf=0;lenf=0;
 			for(i=0;(lastscan+i<scan)&&(lastpos+i<oldsize);) {
-				if(old[lastpos+i]==new[lastscan+i]) s++;
+				if(old_buf[lastpos+i]==new_buf[lastscan+i]) s++;
 				i++;
 				if(s*2-i>Sf*2-lenf) { Sf=s; lenf=i; };
 			};
@@ -228,7 +231,7 @@ int bsdiff(const char* old_filename, const char* new_filename,
 			if(scan<newsize) {
 				s=0;Sb=0;
 				for(i=1;(scan>=lastscan+i)&&(pos>=i);i++) {
-					if(old[pos-i]==new[scan-i]) s++;
+					if(old_buf[pos-i]==new_buf[scan-i]) s++;
 					if(s*2-i>Sb*2-lenb) { Sb=s; lenb=i; };
 				};
 			};
@@ -237,10 +240,10 @@ int bsdiff(const char* old_filename, const char* new_filename,
 				overlap=(lastscan+lenf)-(scan-lenb);
 				s=0;Ss=0;lens=0;
 				for(i=0;i<overlap;i++) {
-					if(new[lastscan+lenf-overlap+i]==
-					   old[lastpos+lenf-overlap+i]) s++;
-					if(new[scan-lenb+i]==
-					   old[pos-lenb+i]) s--;
+					if(new_buf[lastscan+lenf-overlap+i]==
+					   old_buf[lastpos+lenf-overlap+i]) s++;
+					if(new_buf[scan-lenb+i]==
+					   old_buf[pos-lenb+i]) s--;
 					if(s>Ss) { Ss=s; lens=i+1; };
 				};
 
@@ -249,9 +252,9 @@ int bsdiff(const char* old_filename, const char* new_filename,
 			};
 
 			for(i=0;i<lenf;i++)
-				db[dblen+i]=new[lastscan+i]-old[lastpos+i];
+				db[dblen+i]=new_buf[lastscan+i]-old_buf[lastpos+i];
 			for(i=0;i<(scan-lenb)-(lastscan+lenf);i++)
-				eb[eblen+i]=new[lastscan+lenf+i];
+				eb[eblen+i]=new_buf[lastscan+lenf+i];
 
 			dblen+=lenf;
 			eblen+=(scan-lenb)-(lastscan+lenf);
@@ -322,8 +325,10 @@ int bsdiff(const char* old_filename, const char* new_filename,
 	free(db);
 	free(eb);
 	free(I);
-	free(old);
-	free(new);
+	free(old_buf);
+	free(new_buf);
 
 	return 0;
 }
+
+}  // namespace bsdiff
