@@ -46,6 +46,22 @@ bspatch_src_files := \
     extents_file.cc \
     file.cc
 
+# Target executables.
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := bspatch
+LOCAL_CPP_EXTENSION := .cc
+LOCAL_SRC_FILES := \
+    $(bspatch_src_files) \
+    bspatch_main.cc
+LOCAL_CFLAGS := $(bsdiff_common_cflags)
+LOCAL_C_INCLUDES += external/bzip2
+LOCAL_STATIC_LIBRARIES := $(bsdiff_common_static_libs)
+include $(BUILD_EXECUTABLE)
+
+
+# Host executables.
+
 include $(CLEAR_VARS)
 LOCAL_MODULE := bsdiff
 LOCAL_CPP_EXTENSION := .cc
