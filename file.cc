@@ -25,7 +25,7 @@
 namespace bsdiff {
 
 std::unique_ptr<File> File::FOpen(const char* pathname, int flags) {
-  int fd = TEMP_FAILURE_RETRY(open(pathname, flags));
+  int fd = TEMP_FAILURE_RETRY(open(pathname, flags, 0644));
   if (fd < 0)
     return std::unique_ptr<File>();
   return std::unique_ptr<File>(new File(fd));
@@ -69,7 +69,7 @@ bool File::Seek(off_t pos) {
     errno = EOVERFLOW;
     return false;
   }
-  off_t newpos = lseek(fd_, pos, SEEK_SET) == pos;
+  off_t newpos = lseek(fd_, pos, SEEK_SET);
   if (newpos < 0)
     return false;
   if (newpos != pos) {
@@ -96,7 +96,8 @@ bool File::GetSize(uint64_t* size) {
   if (fstat(fd_, &stbuf) == -1)
     return false;
   if (S_ISREG(stbuf.st_mode)) {
-    return stbuf.st_size;
+    *size = stbuf.st_size;
+    return true;
   }
   if (S_ISBLK(stbuf.st_mode)) {
 #if defined(BLKGETSIZE64)
