@@ -175,6 +175,7 @@ int bspatch(
   // The oldpos can be negative, but the new pos is only incremented linearly.
   int64_t oldpos = 0;
   uint64_t newpos = 0;
+  std::vector<u_char> old_buf(1024 * 1024);
   while (newpos < newsize) {
     int64_t i, j;
     // Read control data.
@@ -215,15 +216,15 @@ int bspatch(
     uint64_t chunk_size = old_file_pos - i;
     while (chunk_size > 0) {
       size_t read_bytes;
-      size_t bytes_to_read = std::min(
-          chunk_size,
-          static_cast<uint64_t>(std::numeric_limits<size_t>::max()));
-      if (!old_file->Read(new_buf + j, bytes_to_read, &read_bytes)) {
+      size_t bytes_to_read =
+          std::min(chunk_size, static_cast<uint64_t>(old_buf.size()));
+      if (!old_file->Read(old_buf.data(), bytes_to_read, &read_bytes))
         err(1, "error reading from input file");
-      }
       if (!read_bytes)
         errx(1, "EOF reached while reading from input file");
-      j += read_bytes;
+      // new_buf already has data from diff block, adds old data to it.
+      for (size_t k = 0; k < read_bytes; k++)
+        new_buf[j++] += old_buf[k];
       chunk_size -= read_bytes;
     }
 
@@ -269,12 +270,13 @@ int bspatch(
     new_file.reset(new ExtentsFile(std::move(new_file), parsed_new_extents));
   }
 
+  u_char* temp_new_buf = new_buf;   // new_buf needed for free()
   while (newsize > 0) {
     size_t bytes_written;
-    if (!new_file->Write(new_buf, newsize, &bytes_written))
+    if (!new_file->Write(temp_new_buf, newsize, &bytes_written))
       err(1, "Error writing new file %s", new_filename);
     newsize -= bytes_written;
-    new_buf += bytes_written;
+    temp_new_buf += bytes_written;
   }
 
   if (!new_file->Close())
