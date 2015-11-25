@@ -86,14 +86,15 @@ bool ExtentsFile::IOOperation(bool (FileInterface::*io_op)(T*, size_t, size_t*),
   AdvancePos(0);
   while (count > 0 && curr_ex_idx_ < extents_.size()) {
     const ex_t& ex = extents_[curr_ex_idx_];
-    size_t chunk_size = std::min(static_cast<uint64_t>(count), ex.len);
+    off_t curr_ex_off = curr_pos_ - acc_len_[curr_ex_idx_];
+    size_t chunk_size =
+        std::min(static_cast<uint64_t>(count), ex.len - curr_ex_off);
     size_t chunk_processed = 0;
     if (ex.off < 0) {
       chunk_processed = chunk_size;
     } else {
-      uint64_t file_pos = ex.off + (curr_pos_ - acc_len_[curr_ex_idx_]);
-      if (!file_->Seek(file_pos) ||
-          !((file_.get()->*io_op))(buf, chunk_size, &chunk_processed)) {
+      if (!file_->Seek(ex.off + curr_ex_off) ||
+          !(file_.get()->*io_op)(buf, chunk_size, &chunk_processed)) {
         processed += chunk_processed;
         result = processed > 0;
         break;
