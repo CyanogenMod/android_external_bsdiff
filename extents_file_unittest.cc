@@ -128,6 +128,32 @@ TEST_F(ExtentsFileTest, ReadAcrossAllExtents) {
   EXPECT_EQ(15U, bytes_read);
 }
 
+TEST_F(ExtentsFileTest, MultiReadAcrossAllExtents) {
+  ExtentsFile file(std::move(mock_file_ptr_),
+                   {ex_t{10, 5}, ex_t{20, 7}, {27, 3}});
+  InSequence s;
+  char* buf = reinterpret_cast<char*>(0x1234);
+
+  EXPECT_CALL(*mock_file_, Seek(10)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_file_, Read(buf, 2, _)).WillOnce(SucceedIO());
+  EXPECT_CALL(*mock_file_, Seek(12)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_file_, Read(buf, 3, _)).WillOnce(SucceedIO());
+  EXPECT_CALL(*mock_file_, Seek(20)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_file_, Read(buf + 3, 5, _)).WillOnce(SucceedIO());
+  EXPECT_CALL(*mock_file_, Seek(25)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_file_, Read(buf, 2, _)).WillOnce(SucceedIO());
+  EXPECT_CALL(*mock_file_, Seek(27)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_file_, Read(buf + 2, 3, _)).WillOnce(SucceedIO());
+
+  size_t bytes_read = 0;
+  EXPECT_TRUE(file.Read(buf, 2, &bytes_read));
+  EXPECT_EQ(2U, bytes_read);
+  EXPECT_TRUE(file.Read(buf, 8, &bytes_read));
+  EXPECT_EQ(8U, bytes_read);
+  EXPECT_TRUE(file.Read(buf, 100, &bytes_read));
+  EXPECT_EQ(5U, bytes_read);
+}
+
 TEST_F(ExtentsFileTest, ReadSmallChunks) {
   ExtentsFile file(std::move(mock_file_ptr_), {ex_t{10, 1}, ex_t{20, 10}});
   InSequence s;
